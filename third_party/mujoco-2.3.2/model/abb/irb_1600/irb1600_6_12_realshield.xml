@@ -44,7 +44,7 @@
             <include file="realshield_assembly.xml"/>
 
             <body name="base" pos="0.0 0.0 0.07847612194" euler="0 0 2.0944">
-                <site name="base"/>
+                <site name="base"/> 
                 <geom type="mesh" rgba="0.9 0.9 0.9 1" mesh="base_link" contype="2" conaffinity="2"/>
                 <body name="link_1" pos="0 0 0">
                     <inertial pos="0.0444007 -0.00834001 0.340163" quat="0.575539 0.391509 0.239129 0.676973" mass="44.6131" diaginertia="1.4797 1.22366 0.686463" />
@@ -67,11 +67,11 @@
                                     <joint name="joint_5" pos="0 0 0" axis="0 1 0" type="hinge" limited="true" range="-2.0071 2.0071" />
                                     <geom type="mesh" rgba="0.9 0.9 0.9 1" mesh="link_5" contype="1" conaffinity="1"/>
                                     <body name="link_6" pos="0.065 0 0">
-                                        <site name="ee"/>
                                         <inertial pos="-0.0164152 2.0728e-06 0.000267316" quat="0.502798 0.497187 0.497346 0.50264" mass="0.0748395" diaginertia="3.09311e-05 3.06155e-05 1.53407e-05" />
                                         <joint name="joint_6" pos="0 0 0" axis="1 0 0" type="hinge" limited="true" range="-6.9813 6.9813" />
                                         <geom type="mesh" rgba="0.9 0.9 0.9 1" mesh="link_6" contype="1" conaffinity="1"/>
                                         <geom name="shield" type="box" rgba=".9 0 0 1" pos="0.005 0 0" size="0.005 0.15 0.15" contype="10" conaffinity="21" />
+                                        <site name="shield_site" pos="0.005 0 0" size="0.005" type="sphere" rgba="1 0 0 1"/>
                                     </body>
                                 </body>
                             </body>
