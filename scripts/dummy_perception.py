@@ -43,12 +43,13 @@ rate = rospy.Rate(20)
 #projectile = np.array([6.955, -0.19, 1.29246452, -10, 0, 2.52799])
 #projectile2 = np.array([6.955, -0.19, 1.59246452, -10, 0, 2.72799])
 while not rospy.is_shutdown():
+    # Wait for new projectile message
     if not new_msg_received:
         rate.sleep()
         continue
 
     try:
-        ## try IK solve
+        ## try IK solve 
         qpos, success = get_qpos_from_proj(projectile, dm_model)
         if not success:
             rospy.logwarn("IK Failed")
