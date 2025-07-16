@@ -48,6 +48,7 @@ while not rospy.is_shutdown():
         continue
 
     try:
+        ## try IK solve
         qpos, success = get_qpos_from_proj(projectile, dm_model)
         if not success:
             rospy.logwarn("IK Failed")
