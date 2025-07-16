@@ -34,10 +34,11 @@ proj_sub = rospy.Subscriber('/projectile', Projectile, proj_cb)
 model_dir = '/home/shield/code/shield_min_ws/src/replanning/mujoco_ws/abb/irb_1600/'
 mjcf = 'irb1600_6_12_shield_projectile.xml'
 dm_model = dm_mj.Physics.from_xml_path(os.path.join(model_dir, mjcf))
+print("IK node active: ")
 
 T_W_Base =np.array([0.55, -0.7, 0.45])
 
-rate = rospy.Rate(10)  
+rate = rospy.Rate(20)  
 #new_msg_received = True
 #projectile = np.array([6.955, -0.19, 1.29246452, -10, 0, 2.52799])
 #projectile2 = np.array([6.955, -0.19, 1.59246452, -10, 0, 2.72799])
