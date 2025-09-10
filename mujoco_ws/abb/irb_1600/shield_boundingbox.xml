@@ -1,0 +1,3 @@
+<mujoco model="shield_boundingbox">
+    <geom name="boundingbox" size="1.85 2 1.5" pos="2.65 0 1.5" type="box" rgba="0 1 0 0.1" contype="0" conaffinity="0"/>
+</mujoco>

@@ -1,0 +1,162 @@
+<mujoco model="abb_irb1600_6_12">
+    <compiler angle="radian" />
+    <size njmax="500" nconmax="100" />
+    <option collision="dynamic"/>
+    <visual>
+        <scale framewidth="0.01"/>
+    </visual>
+    
+    
+    <default>
+        <geom solimp=".9 .9 .01"/>
+        <default class="object1">
+          <geom type="capsule" material="object1" size="0.1 0.05"/>
+        </default>
+        <default class="object2">
+          <geom type="ellipsoid" material="object2" size="0.15 0.1 0.07"/>
+        </default>
+        <default class="object3">
+          <geom type="box" material="object3" size="0.15 0.1 0.05"/>
+        </default>
+        <default class="object4">
+          <geom type="cylinder" material="object4" size="0.1 0.05" condim="4" friction="1 .01 .01"/>
+        </default>
+        <default class="object5">
+          <geom type="sphere" material="object5" size="0.09"/>
+        </default>
+        <default class="border">
+          <geom type="capsule" size="0.4" rgba=".4 .4 .4 1"/>
+        </default>
+        <default class="borderpost">
+          <geom type="box" size="0.41 0.41 0.41" rgba=".55 .55 .55 1"/>
+        </default>
+    </default>
+
+    <asset>
+        <mesh name="base_link" file="base_link.stl" />
+        <mesh name="link_1" file="link_1.stl" />
+        <mesh name="link_2" file="link_2.stl" />
+        <mesh name="link_3" file="link_3.stl" />
+        <mesh name="link_4" file="link_4.stl" />
+        <mesh name="link_5" file="link_5.stl" />
+        <mesh name="link_6" file="link_6.stl" />
+        <!-- <mesh name="pedestal" file="pedestal.stl" scale="0.001 0.001 0.001"/> -->
+        <mesh name="pedestal" file="pedestal_CoM.STL"/>
+        <mesh name="adapter" file="4903N12_Robot_Tool_Mount.stl" scale="0.001 0.001 0.001"/>
+        <mesh name="calibtool_p1" file="calib_tool_p1.stl"/>
+        <!-- <mesh name="calibtool_p2" file="calib_tool_p2.stl"/> -->
+        <mesh name="calibtool_p2" file="calib_tool_p2_n.stl"/>
+        <mesh name="camera" file="ZED2i.stl"/>
+        <mesh name="lidar_w_bracket" file="bracket_w_lidar.stl"/>
+
+
+        <material name="BeigeMaterial" specular="0" shininess="0" reflectance="0" rgba="0.26 0.16 0.16796875 1" emission="0" />
+        <texture name="texplane" type="2d" builtin="checker" rgb1=".2 .3 .4" rgb2=".1 0.15 0.2" width="512" height="512" />
+        <!-- <material name="MatPlane" reflectance="0" texture="texplane" texrepeat="1 1" texuniform="true" /> -->
+        <material name="MatGnd" specular=".3" shininess=".3" reflectance="0.3" rgba=".5 .55 .5 1"/>
+        <!-- <texture type="skybox" builtin="gradient" width="512" height="512" rgb1=".4 .6 .8" rgb2="0 0 0"/> -->
+        <texture name="texgeom" type="cube" builtin="flat" mark="cross" width="128" height="128"
+                 rgb1="0.6 0.6 0.6" rgb2="0.6 0.6 0.6" markrgb="1 1 1"/>
+        <!-- <texture name="texplane" type="2d" builtin="checker" rgb1=".4 .4 .4" rgb2=".6 .6 .6" -->
+        <!--          width="512" height="512"/> -->
+        <material name='MatPlane' reflectance='0.0' texture="texplane" texrepeat="1 1" texuniform="true"
+                  rgba=".7 .7 .7 1"/>
+        <material name='object1' texture="texgeom" texuniform="true" rgba=".4 .9 .6 1" />
+        <material name='object2' texture="texgeom" texuniform="true" rgba=".4 .6 .9 1" />
+        <material name='object3' texture="texgeom" texuniform="true" rgba=".4 .9 .9 1" />
+        <material name='object4' texture="texgeom" texuniform="true" rgba=".8 .6 .8 1" />
+        <material name='object5' texture="texgeom" texuniform="true" rgba=".9 .1 .1 1" />
+    </asset>
+    <worldbody>
+        <!-- Lights -->
+        <light directional="true" diffuse=".5 .5 .5" pos="0 0 20" dir="0 0 -10"/>
+        <camera name="top" pos="0 0 4" xyaxes="-1 0 0 0 -1 0"/>
+        <camera name="front" pos="0 4 0.9" xyaxes="-1 0.0 0.000 0.00 0.0 1"/>
+        <camera name="side" pos="-4 0. 0.9" xyaxes="0.0 -1 0.000 0 0.00 1"/>
+        <camera name="back" pos="3 -3 3" xyaxes="0.725 0.725 -0.0 -0.3 0.3 0.9"/>
+        <!-- <camera pos="-7.261 6.829 4.243" xyaxes="-0.675 -0.738 0.000 0.229 -0.209 0.951"/> -->
+<!-- <camera pos="2.396 -2.438 2.719" xyaxes="0.730 0.683 -0.000 -0.237 0.253 0.938"/> -->
+<!-- <camera pos="2.307 -2.188 3.258" xyaxes="0.711 0.703 -0.000 -0.331 0.334 0.883"/> -->
+        <!-- <light name="light0" diffuse=".7 .7 .7" pos="1.5 1.5 2"   dir="-1 -1 -.5" ambient="1 1 1" castshadow="false" /> -->
+        <!-- <light name="light1" diffuse=".7 .7 .7" pos="-1.5 1.5 2"  dir="1 -1 -.5" ambient="1 1 1" castshadow="false" /> -->
+        <!-- <light name="light2" diffuse=".7 .7 .7" pos="1.5 -1.5 2"  dir="-1 1 -.5" ambient="1 1 1" castshadow="false" /> -->
+        <!-- <light name="light3" diffuse=".7 .7 .7" pos="-1.5 -1.5 2" dir="1 1 -.5" ambient="1 1 1" castshadow="false" /> -->
+        <!-- <light name="light0_1" diffuse=".9 .9 .9" pos="10 10 2"   dir="-1 -1 -.5" ambient="1 1 1" castshadow="false" /> -->
+        <!-- <light name="light1_1" diffuse=".9 .9 .9" pos="-10 10 2"  dir="1 -1 -.5" ambient="1 1 1" castshadow="false" /> -->
+        <!-- <light name="light2_1" diffuse=".9 .9 .9" pos="10 -10 2"  dir="-1 1 -.5" ambient="1 1 1" castshadow="false" /> -->
+        <!-- <light name="light3_1" diffuse=".9 .9 ." pos="-10 -10 2" dir="1 1 -.5" ambient="1 1 1" castshadow="false" /> -->
+        <light name="light0_1" diffuse=".9 .9 .9" pos="10 10 2"   dir="-1 -1 -.5"  castshadow="false" />
+        <!-- <light name="light1_1" diffuse=".9 .9 .9" pos="-10 10 2"  dir="1 -1 -.5"  castshadow="false" /> -->
+        <!-- <light name="light2_1" diffuse=".9 .9 .9" pos="10 -10 2"  dir="-1 1 -.5"  castshadow="false" /> -->
+        <light name="light3_1" diffuse=".9 .9 .9" pos="-10 -10 2" dir="1 1 -.5"  castshadow="false" />
+        <!-- Floor -->
+        <geom name="floor" pos="0 0 0" size="5 5 .125" type="plane" material="MatPlane" />
+        <!-- condim="3"  contype="2" conaffinity="2"/> -->
+
+        <include file="realshield_obstacles.xml"/>
+
+        <!-- <site name="world"/> -->
+        <body name="obstacle" pos="0.0 0.0 0.4041">
+
+            <include file="realshield_assembly.xml"/>
+
+            <body name="base" pos="0.0 0.0 0.07847612194" euler="0 0 2.0944">
+                <!-- <include file="shield_dome.xml"/> -->
+                <site name="base"/>
+                <geom type="mesh" rgba="0.9 0.9 0.9 1" mesh="base_link" contype="2" conaffinity="2"/>
+                <body name="link_1" pos="0 0 0">
+                    <inertial pos="0.0444007 -0.00834001 0.340163" quat="0.575539 0.391509 0.239129 0.676973" mass="44.6131" diaginertia="1.4797 1.22366 0.686463" />
+                    <joint name="joint_1" pos="0 0 0" axis="0 0 1" type="hinge" limited="true" range="-3.14159 3.14159" />
+                    <geom type="mesh" rgba="0.9 0.9 0.9 1" mesh="link_1" contype="1" conaffinity="1"/>
+                    <body name="link_2" pos="0.15 0 0.4865">
+                        <inertial pos="-0.000162316 -0.181341 0.209041" quat="0.711714 -0.0257675 0.0284926 0.701418" mass="8.36275" diaginertia="0.278683 0.272236 0.0199549" />
+                        <joint name="joint_2" pos="0 0 0" axis="0 1 0" type="hinge" limited="true" range="-1.0995 1.9198" />
+                        <geom type="mesh" rgba="0.9 0.9 0.9 1" mesh="link_2"  contype="2" conaffinity="2"/>
+                        <body name="link_3" pos="0 0 0.475">
+                            <inertial pos="0.0211951 0.0175275 -0.0132258" quat="0.25664 0.667078 0.208923 0.667454" mass="16.0317" diaginertia="0.262454 0.244916 0.112849" />
+                            <joint name="joint_3" pos="0 0 0" axis="0 1 0" type="hinge" limited="true" range="-4.1015 0.9599" />
+                            <geom type="mesh" rgba="0.9 0.9 0.9 1" mesh="link_3" contype="1" conaffinity="1"/>
+                            <body name="link_4" pos="0.3 0 0">
+                                <inertial pos="0.184489 -0.000718245 -1.22946e-05" quat="0.0065586 0.706564 -0.00374281 0.707609" mass="2.96489" diaginertia="0.0275833 0.0267565 0.00469567" />
+                                <joint name="joint_4" pos="0 0 0" axis="1 0 0" type="hinge" limited="true" range="-3.4906 3.4906" />
+                                <geom type="mesh" rgba="0.9 0.9 0.9 1" mesh="link_4" contype="2" conaffinity="2"/>
+                                <body name="link_5" pos="0.3 0 0">
+                                    <inertial pos="1.38541e-08 2.00457e-06 5.41082e-08" quat="0.707107 5.68027e-06 5.68027e-06 0.707107" mass="0.183296" diaginertia="0.000132901 9.60035e-05 9.12007e-05" />
+                                    <joint name="joint_5" pos="0 0 0" axis="0 1 0" type="hinge" limited="true" range="-2.0071 2.0071" />
+                                    <geom type="mesh" rgba="0.9 0.9 0.9 1" mesh="link_5" contype="1" conaffinity="1"/>
+                                    <body name="link_6" pos="0.065 0 0">
+                                        <site name="ee"/>
+                                        <inertial pos="-0.0164152 2.0728e-06 0.000267316" quat="0.502798 0.497187 0.497346 0.50264" mass="0.0748395" diaginertia="3.09311e-05 3.06155e-05 1.53407e-05" />
+                                        <joint name="joint_6" pos="0 0 0" axis="1 0 0" type="hinge" limited="true" range="-6.9813 6.9813" />
+                                        <geom type="mesh" rgba="0.9 0.9 0.9 1" mesh="link_6" contype="1" conaffinity="1"/>
+                                        <geom name="shield" type="box" material="object3" rgba=".9 0 0 1" pos="0.005 0 0" size="0.015 0.15 0.15" contype="1" condim="1" />
+                                        <!-- <geom name="shield" class="object3" /> -->
+                                    </body>
+                                </body>
+                            </body>
+                        </body>
+                    </body>
+                </body>            
+            </body>
+        </body>
+
+        <!-- <body name="obstacle" pos="0.0 0.0 0.4041"> -->
+        <body name="proj" pos="0 0 0" euler="0 0 0">
+            <site name="proj"/>
+            <inertial pos="0 0 0" quat="1 0 0 0" mass="0.00000001" diaginertia="0.0001 0.0001 0.0001" />
+            <freejoint/>
+            <geom class="object5" contype="6" condim="1"/>
+        </body>
+        <!-- </body> -->
+
+
+    </worldbody>
+
+    <keyframe>
+<!-- 6.20222 3.24538 0 -5.24919 -2.77376 6.26131  -->
+        <!-- <key qpos='0.25136 1.3162 -0.659588 0.03491 0.94329 -1.11696'/> -->
+        <!-- <key qpos='0.25136 1.3162 -0.659588 0.03491 0.22077 -1.95468 0 0 0 0 0 0 0'/> -->
+        <key qpos='-0.5236 0 0 0 0 0 5 5 -1 0 0 0 0'/>
+        <key qvel='0 0 0 0 0 0 0 0 0 0 0 0'/>
+    </keyframe>
+</mujoco>

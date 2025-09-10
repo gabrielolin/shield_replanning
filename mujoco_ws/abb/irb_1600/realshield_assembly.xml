@@ -1,0 +1,27 @@
+<mujoco model="realshield_assembly">
+    <body name="pedestal">
+        <!-- Pedestal mesh -->
+        <geom type="mesh" mesh="pedestal" rgba="0 0 1 1" euler="1.57 0 0" contype="1" conaffinity="1"/>
+
+        <!-- Sensor rig and supports -->
+        <geom name="srig_n" type="box" pos="0 0.5588 0" size="0.5461 0.0127 0.0381" rgba="0.5 0.5 0.5 1" contype="1" conaffinity="1"/>
+        <geom name="srig_e" type="box" pos="0.5588 0 0" size="0.0127 0.5461 0.0381" rgba="0.5 0.5 0.5 1" contype="1" conaffinity="1"/>
+        <geom name="srig_s" type="box" pos="0 -0.5588 0" size="0.5461 0.0127 0.0381" rgba="0.5 0.5 0.5 1" contype="1" conaffinity="1"/>
+        <geom name="srig_w" type="box" pos="-0.5588 0 0" size="0.0127 0.5461 0.0381" rgba="0.5 0.5 0.5 1" contype="1" conaffinity="1"/>
+
+        <!-- Camera supports -->
+        <geom name="cam1_support_n" type="box" pos="-0.4699 0.6731 -0.0254" size="0.0127 0.1016 0.0127" rgba="0.5 0.5 0.5 1" contype="1" conaffinity="1"/>
+        <geom name="cam1_support_w" type="box" pos="-0.6731 0.4699 -0.0254" size="0.1016 0.0127 0.0127" rgba="0.5 0.5 0.5 1" contype="1" conaffinity="1"/>
+        <geom name="cam1_support" type="box" pos="-0.6223 0.6223 0" size="0.2301875 0.0127 0.0127" euler="0 0 0.785398" rgba="0.5 0.5 0.5 1" contype="1" conaffinity="1"/>
+
+        <!-- Sites for reference -->
+        <site name="test_site" pos="-0.6223 0.6223 0.0" euler="0 0 0.785398"/>
+
+        <!-- Camera body -->
+        <body name="cam1_mount" pos="-0.6223 0.6223 0.04" euler="0 0 0.785398">
+            <geom name="cam1_mount" type="box" pos="0 0 0" size="0.0127 0.0127 0.04" rgba="0.5 0.5 0.5 1" contype="1" conaffinity="1"/>
+            <geom name="cam1" type="mesh" pos="0 0 0.055" euler="0.523599 0 0" mesh="camera" contype="1" conaffinity="1"/>
+            <site name="cam1" pos="0 0 0.055" euler="0.523599 0 0"/>
+        </body>
+    </body>
+</mujoco>
