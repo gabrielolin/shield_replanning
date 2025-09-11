@@ -1,0 +1,4 @@
+logs/
+# ignore pickled data dumps
+scripts/uncertainty/value_iteration_data.pkl
+
