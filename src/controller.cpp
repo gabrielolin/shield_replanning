@@ -11,13 +11,23 @@
 #include <trajectory_msgs/JointTrajectoryPoint.h>
 #include <actionlib/client/simple_action_client.h>
 #include <vector>
-#include <shield_planner/shield_planner.h>
 #include <mujoco/mujoco.h>
 #include <std_msgs/Float64MultiArray.h>
+#include <actionlib/client/simple_action_client.h>
+#include <belief_planner/GetBestActionAction.h>
+#include <atomic>
+
 
 using namespace ruckig;
+
+std::atomic<bool> goal_ready(false);
+InputParameter<6> input_buffer; // Buffer to store the result
+
 using FollowJointTrajectoryActionClient =
         actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>;
+
+typedef actionlib::SimpleActionClient<belief_planner::GetBestActionAction> BestActionClient;
+std::shared_ptr<BestActionClient> best_action_client;
 
 // Global variable to store current joint positions
 std::vector<double> latest_joint_positions(6, 0.0);
@@ -147,10 +157,6 @@ void jointStateCallback(const sensor_msgs::JointState::ConstPtr& msg) {
     joint_state_received = true;
 }
 
-void newGoalCallback(const sensor_msgs::JointState::ConstPtr& msg) {
-    goal_config= msg->position;
-    goal_received = true;
-}
 
 void updateState(ros::Rate& rate, InputParameter<6>& input){
     joint_state_received = false;
@@ -165,50 +171,39 @@ void updateState(ros::Rate& rate, InputParameter<6>& input){
     }
 }
 
-void updateGoal(ros::Rate& rate, InputParameter<6>& input){
-    goal_received = false;
-    while (ros::ok() && !goal_received) {
-        ros::spinOnce();
-        rate.sleep();
-    }
-    if(!checkConfigurationForCollision(model, data, goal_config)){
+
+
+
+void bestActionDoneCb(const actionlib::SimpleClientGoalState& state,
+                      const belief_planner::GetBestActionResultConstPtr& result)
+{
+    if (state == actionlib::SimpleClientGoalState::SUCCEEDED) {
         for (size_t i = 0; i < 6; ++i) {
-            input.target_position[i] = goal_config[i];    
+            goal_config[i] = result->position[i];
         }
-    }
-    else{
-        std::cout << "Collision detected at new IK solution!" << std::endl;
+        if (!checkConfigurationForCollision(model, data, goal_config)) {
+            for (size_t i = 0; i < 6; ++i) {
+                input_buffer.target_position[i] = result->position[i];
+                input_buffer.target_velocity[i] = result->velocity[i];
+                input_buffer.target_acceleration[i] = result->acceleration[i];
+            }
+            goal_ready = true;
+        } else {
+            std::cout << "Collision detected at new IK solution!" << std::endl;
+        }
+    } else {
+        // Action was aborted or failed; do not set goal_ready
+        ROS_WARN_STREAM("GetBestAction action did not succeed: " << state.toString());
     }
 }
 
-void updateGoalNoStop(ros::Rate& rate, InputParameter<6>& input){
+void updateGoal(InputParameter<6>& input, float cur_time) {
+    belief_planner::GetBestActionGoal goal_msg;
+    goal_msg.cur_time = cur_time;
+    goal_ready = false;
+    best_action_client->sendGoal(goal_msg, &bestActionDoneCb);
 
-    if(!checkConfigurationForCollision(model, data, goal_config)){
-        for (size_t i = 0; i < 6; ++i) {
-            input.target_position[i] = goal_config[i];    
-        }
-    }
-    else{
-        std::cout << "Collision detected at new IK solution!" << std::endl;
-    }
-}
-
-void updateStateAndGoal(ros::Rate& rate, InputParameter<6>& input){
-    joint_state_received = false;
-
-    while (ros::ok() && !joint_state_received) {
-        ros::spinOnce();
-        rate.sleep();
-    }
-    if(!checkConfigurationForCollision(model, data, goal_config)){
-        for (size_t i = 0; i < 6; ++i) {
-            input.target_position[i] = goal_config[i];    
-        }
-    }
-
-    for (size_t i = 0; i < 6; ++i) {
-        input.current_position[i] = latest_joint_positions[i];      
-    }
+    // Do not wait here; main loop should check goal_ready and copy from input_buffer when true
 }
 
 
@@ -219,19 +214,10 @@ void stopExecution(ros::Publisher& vel_pub){
     ros::Duration(1.0).sleep();
 }
 
-bool executeTrajectory(ros::Publisher& vel_pub, ros::Rate& rate, Ruckig<6>& otg, InputParameter<6>& input,OutputParameter<6>& output, ros::Duration& break_time, bool transition){
+bool executeTrajectory(ros::Publisher& vel_pub, ros::Rate& rate, Ruckig<6>& otg, InputParameter<6>& input,OutputParameter<6>& output, ros::Duration& break_time){
     int count = 0;
     ros::Time 
     t_start = ros::Time::now();
-
-    if(transition){
-        input.max_jerk = {50.0, 50.0, 50.0, 50.0, 50.0, 50.0};
-        for (size_t i = 0; i < 6; ++i) {
-            input.current_position[i] = latest_joint_positions[i];  
-            //input.current_velocity[i] = latest_joint_velocities[i];
-            //input.current_acceleration[i] = latest_joint_accelerations[i];
-        }
-    }
 
     while (ros::ok() && otg.update(input, output) == Result::Working) {
         if (checkTrajectoryForCollisions(model, data, output.trajectory, 0.004)){
@@ -257,15 +243,25 @@ bool executeTrajectory(ros::Publisher& vel_pub, ros::Rate& rate, Ruckig<6>& otg,
         else{
             rate.sleep();
         }
-        if(count%50 == 0){
-            updateGoalNoStop(rate, input);
-            rate.sleep();
-        }
+        double tolerance = 0.05; // Set your desired tolerance
 
-        count++;
-        if (transition && count > 60) {
-            input.max_jerk = {100.0, 100.0, 100.0, 100.0, 100.0, 100.0};
+        double norm = 0.0;
+        for (size_t i = 0; i < 6; ++i) {
+            double diff = input.target_position[i] - input.current_position[i];
+            norm += diff * diff;
         }
+        norm = std::sqrt(norm);
+
+        if (norm < tolerance) {
+            updateGoal(input,(ros::Time::now() - t_start).toSec());
+        }
+        if(goal_ready){
+            input.target_position = input_buffer.target_position;
+            input.target_velocity = input_buffer.target_velocity;   
+            input.target_acceleration = input_buffer.target_acceleration;
+            goal_ready = false;
+        }
+        count++;
     }   
     output.pass_to_input(input);
     std::cout<<count<<std::endl;
@@ -277,7 +273,7 @@ bool goHome(ros::Publisher& vel_pub, ros::Rate& rate, Ruckig<6>& otg, InputParam
     input.max_velocity = {1.618, 1.7925, 1.967, 2.585, 3.9813, 3.854};
     input.max_acceleration = {30.0, 30.0, 30.0, 30.0, 30.0, 30.0};
     input.max_jerk = {100.0, 100.0, 100.0, 100.0, 100.0, 100.0};
-    input.target_position = {0.0, 0.0, -0.0, -0.0, 0.0, 0.0};
+    input.target_position = {0.261799, 0.0, -0.0, -0.0, 0.0, 0.0};
     input.target_velocity = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
     input.target_acceleration = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 
@@ -341,9 +337,6 @@ int main(int argc, char** argv) {
        //"sim_joint_states", 10, jointStateCallback
     );
     
-    ros::Subscriber get_new_goal_sub = nh.subscribe(
-        "/mujoco_ik", 10, newGoalCallback
-    );
 
     ros::Publisher vel_pub = nh.advertise<std_msgs::Float64MultiArray>(
         "/egm/joint_group_velocity_controller/command", 10);
@@ -357,6 +350,13 @@ int main(int argc, char** argv) {
         return false;
     }
     ROS_INFO("Connected to follow_joint_trajectory server");
+
+    best_action_client = std::make_shared<BestActionClient>("get_best_action", true);
+    if(!best_action_client->waitForServer(ros::Duration(1.0))) {
+        ROS_ERROR("Best action server not available");
+        return false;
+    }
+    ROS_INFO("Connected to get_best_action server");
 
     // Initialize Ruckig OTG
     Ruckig<6> otg(0.004);  // 4ms control cycle
@@ -373,7 +373,7 @@ int main(int argc, char** argv) {
     updateState(rate, input);
 
     // Go to home config
-    input.target_position = {0.0, 0.0, -0.0, -0.0, 0.0, 0.0};
+    input.target_position = {0.261799, 0.0, -0.0, -0.0, 0.0, 0.0};
     input.target_velocity = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
     input.target_acceleration = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 
@@ -390,7 +390,7 @@ int main(int argc, char** argv) {
 
     std::cout << "Trajectory duration: " << trajectory.get_duration() << std::endl;
     ros::Duration break_time(5.0);
-    executeTrajectory(vel_pub, rate, otg, input, output,break_time,false);
+    executeTrajectory(vel_pub, rate, otg, input, output,break_time);
 
     stopExecution(vel_pub);
 
@@ -399,13 +399,16 @@ int main(int argc, char** argv) {
     input.max_jerk = {500.0, 500.0, 500.0, 500.0, 500.0, 500.0};
     
     while(ros::ok()){
-        updateGoal(rate, input);
+        updateGoal(input, 0.0);
         updateState(rate, input);
         for (size_t i = 0; i < 6; ++i) { 
             input.current_velocity[i] = 0.0;
             input.current_acceleration[i] = 0.0;
         }
-        if(!executeTrajectory(vel_pub, rate, otg, input, output,break_time,false)){
+        if (!goal_ready) {
+            continue;
+        }
+        if(!executeTrajectory(vel_pub, rate, otg, input, output,break_time)){
             break;
         }
         stopExecution(vel_pub);
