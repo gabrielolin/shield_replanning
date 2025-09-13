@@ -41,7 +41,7 @@ bool goal_received = false;
 
 std::vector<double> goal_config(6,0.0);
 
-mjModel* model = mj_loadXML("/home/shield/code/shield_min_ws/src/replanning/mujoco_ws/abb/irb_1600/irb1600_6_12_realshield.xml", nullptr, nullptr, 0);
+mjModel* model = mj_loadXML("/home/shield/code/shield_min_ws/src/belief_planner/belief-space-planner/irb_1600/irb1600_6_12_realshield.xml", nullptr, nullptr, 0);
 mjData* data = mj_makeData(model);
 
 bool checkTrajectoryForCollisions(
@@ -176,13 +176,14 @@ void updateState(ros::Rate& rate, InputParameter<6>& input){
 
 void bestActionDoneCb(const actionlib::SimpleClientGoalState& state,
                       const belief_planner::GetBestActionResultConstPtr& result)
+                      
 {
     if (state == actionlib::SimpleClientGoalState::SUCCEEDED) {
         for (size_t i = 0; i < 6; ++i) {
             goal_config[i] = result->position[i];
         }
         if (!checkConfigurationForCollision(model, data, goal_config)) {
-            for (size_t i = 0; i < 6; ++i) {
+            for (size_t i = 0; i < 3; ++i) {
                 input_buffer.target_position[i] = result->position[i];
                 input_buffer.target_velocity[i] = result->velocity[i];
                 input_buffer.target_acceleration[i] = result->acceleration[i];
@@ -373,7 +374,8 @@ int main(int argc, char** argv) {
     updateState(rate, input);
 
     // Go to home config
-    input.target_position = {0.261799, 0.0, -0.0, -0.0, 0.0, 0.0};
+    //input.target_position = {0.261799, 0.0, -0.0, -0.0, 0.0, 0.0};
+    input.target_position = {0.0, 0.0, -0.0, -0.0, 0.0, 0.0};
     input.target_velocity = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
     input.target_acceleration = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 
@@ -399,12 +401,16 @@ int main(int argc, char** argv) {
     input.max_jerk = {500.0, 500.0, 500.0, 500.0, 500.0, 500.0};
     
     while(ros::ok()){
-        updateGoal(input, 0.0);
-        updateState(rate, input);
         for (size_t i = 0; i < 6; ++i) { 
             input.current_velocity[i] = 0.0;
             input.current_acceleration[i] = 0.0;
         }
+        if (!best_action_client->getState().isDone()) {
+            continue; // wait for the current goal to finish
+        }
+        updateGoal(input, 0.0);
+        updateState(rate, input);
+
         if (!goal_ready) {
             continue;
         }
