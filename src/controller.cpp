@@ -39,6 +39,8 @@ ros::Time last_time;
 bool joint_state_received = false;
 bool goal_received = false;
 
+bool wait = true;
+
 std::vector<double> goal_config(6,0.0);
 
 mjModel* model = mj_loadXML("/home/shield/code/shield_min_ws/src/belief_planner/belief-space-planner/irb_1600/irb1600_6_12_realshield.xml", nullptr, nullptr, 0);
@@ -206,6 +208,7 @@ void bestActionDoneCb(const actionlib::SimpleClientGoalState& state,
                 input_buffer.target_acceleration[i] = result->acceleration[i];
                 input_buffer.minimum_duration = result->duration;
                 input_buffer.target_position[i+3] = result->position2[i];
+                wait = result->wait;
             }
             
             goal_ready = true;
@@ -289,7 +292,7 @@ bool executeTrajectory(ros::Publisher& vel_pub, ros::Rate& rate, Ruckig<6>& otg,
         else{
             rate.sleep();
         }
-        double tolerance = 0.05; // Set your desired tolerance
+        double tolerance = 0.2; // Set your desired tolerance
 
         double norm = 0.0;
         for (size_t i = 0; i < 3; ++i) {
@@ -297,14 +300,25 @@ bool executeTrajectory(ros::Publisher& vel_pub, ros::Rate& rate, Ruckig<6>& otg,
             norm += diff * diff;
         }
         norm = std::sqrt(norm);
-
-        if (norm < tolerance && !goal_ready && best_action_client->getState().isDone()) {
-            updateGoal(input,(ros::Time::now() - t_start).toSec());
-            //break;
-            //stopExecution(vel_pub, rate, otg, input, output);
-            //break;
+        if(!wait){
+            if (!goal_ready && best_action_client->getState().isDone()) {
+                updateGoal(input,(ros::Time::now() - t_start).toSec());
+                //break;
+                //stopExecution(vel_pub, rate, otg, input, output);
+                //break;
+            }
+        }
+        else{
+            if(!goal_ready && norm < tolerance && best_action_client->getState().isDone()){
+                updateGoal(input,(ros::Time::now() - t_start).toSec());
+            }
         }
         if(goal_ready){
+            if(!updateState(rate, input)){
+                std::cout<<"Failed to get joint states"<<std::endl;
+                stopExecution(vel_pub, rate, otg, input, output);
+                return false;
+            }
             input.target_position = input_buffer.target_position;
             input.target_velocity = input_buffer.target_velocity;   
             input.target_acceleration = input_buffer.target_acceleration;
