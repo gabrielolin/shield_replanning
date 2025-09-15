@@ -88,7 +88,7 @@ bool checkTrajectoryForCollisions(
             std::cerr << "Collision detected at time " << t << "s" << std::endl;
             return true;
         }
-        if(z_pos  < 0.5){
+        if(z_pos  < 0.6){
             std::cout << "Link_6 Too Low: " << z_pos << "m. At time: " << t << "s" << std::endl;
             return true;
         }
@@ -123,17 +123,14 @@ bool checkConfigurationForCollision(
     mj_forward(model, data);
 
     z_pos = data->xpos[3 * link6_id + 2];
-    std::cout << "ncon: " << data->ncon << std::endl;
-    for (int i = 0; i < 6; i++){
-        std::cout << "Joint " << i+1 << ": " << config[i] << std::endl;
-    }
+
     // Check for contact
     if (data->ncon > 0) {
         std::cerr << "Collision detected at new IK solution!" << std::endl;
         return true;
     }
 
-    if(z_pos  < 0.5){
+    if(z_pos  < 0.6){
         std::cerr << "Link_6 Too Low: " << z_pos << "m" << std::endl;
         return true;
     }
@@ -207,7 +204,10 @@ void bestActionDoneCb(const actionlib::SimpleClientGoalState& state,
                 input_buffer.target_position[i] = result->position[i];
                 input_buffer.target_velocity[i] = result->velocity[i];
                 input_buffer.target_acceleration[i] = result->acceleration[i];
+                input_buffer.minimum_duration = result->duration;
+                input_buffer.target_position[i+3] = result->position2[i];
             }
+            
             goal_ready = true;
         } else {
             //std::cout << "Collision detected at new IK solution!" << std::endl;
@@ -246,6 +246,7 @@ bool executeTrajectory(ros::Publisher& vel_pub, ros::Rate& rate, Ruckig<6>& otg,
     int count = 0;
     ros::Time 
     t_start = ros::Time::now();
+    const auto min_d_initial_opt = input.minimum_duration; 
     std::cout <<"attempting to execute trajectory"<<std::endl;
     while (ros::ok() && otg.update(input, output) == Result::Working) {
         if (checkTrajectoryForCollisions(model, data_main, output.trajectory, 0.004)){
@@ -257,6 +258,16 @@ bool executeTrajectory(ros::Publisher& vel_pub, ros::Rate& rate, Ruckig<6>& otg,
         vel_msg.data.insert(vel_msg.data.end(), output.new_velocity.begin(), output.new_velocity.end());
         vel_pub.publish(vel_msg);
 
+        if (min_d_initial_opt) {
+            const double elapsed = (ros::Time::now() - t_start).toSec();
+            const double rem = std::max(0.0, *min_d_initial_opt - elapsed);
+            if (rem > 0.0) {
+                input.minimum_duration = rem;  // set optional with new value
+            } else {
+                input.minimum_duration.reset();  // unset optional when elapsed
+            }
+        }
+
         // Pass output to next input
         output.pass_to_input(input);
 
@@ -264,10 +275,10 @@ bool executeTrajectory(ros::Publisher& vel_pub, ros::Rate& rate, Ruckig<6>& otg,
             ROS_WARN("aborting trajectory");
             break;
         }
-        // periodically update the current position
-        if(count%100==0){
-            updateGoal(input,(ros::Time::now() - t_start).toSec());
-        }
+        // periodically update the current position and goal
+        //if(count%100==0){
+         //   updateGoal(input,(ros::Time::now() - t_start).toSec());
+        //}
         if(count%15 == 0){
             if(!updateState(rate, input)){
                 std::cout<<"Failed to get joint states"<<std::endl;
@@ -278,7 +289,7 @@ bool executeTrajectory(ros::Publisher& vel_pub, ros::Rate& rate, Ruckig<6>& otg,
         else{
             rate.sleep();
         }
-        double tolerance = 0.02; // Set your desired tolerance
+        double tolerance = 0.05; // Set your desired tolerance
 
         double norm = 0.0;
         for (size_t i = 0; i < 3; ++i) {
@@ -287,16 +298,17 @@ bool executeTrajectory(ros::Publisher& vel_pub, ros::Rate& rate, Ruckig<6>& otg,
         }
         norm = std::sqrt(norm);
 
-        //if (norm < tolerance) {
-        //    //updateGoal(input,(ros::Time::now() - t_start).toSec());
-        //    //break;
-        //    stopExecution(vel_pub, rate, otg, input, output);
-        //    break;
-        //}
+        if (norm < tolerance && !goal_ready && best_action_client->getState().isDone()) {
+            updateGoal(input,(ros::Time::now() - t_start).toSec());
+            //break;
+            //stopExecution(vel_pub, rate, otg, input, output);
+            //break;
+        }
         if(goal_ready){
             input.target_position = input_buffer.target_position;
             input.target_velocity = input_buffer.target_velocity;   
             input.target_acceleration = input_buffer.target_acceleration;
+            input.minimum_duration = input_buffer.minimum_duration;
             std::cout<<"New Goal Received during execution"<<std::endl;
             std::cout<<"target velocity: "<<input.target_velocity[0]<<","<<input.target_velocity[1]<<","<<input.target_velocity[2]<<std::endl;
             goal_ready = false;
@@ -319,6 +331,9 @@ bool goHome(ros::Publisher& vel_pub, ros::Rate& rate, Ruckig<6>& otg, InputParam
     input.target_acceleration = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
     std::cout << "going home"<<std::endl;
     int count = 0;
+    ros::Time
+    t_start = ros::Time::now();
+    const auto min_d_initial_opt = input.minimum_duration; 
     while (ros::ok() && otg.update(input, output) == Result::Working) {
         if (checkTrajectoryForCollisions(model, data_main, output.trajectory, 0.004)){
             std::cout << "Collision detected!" << std::endl;
@@ -328,6 +343,17 @@ bool goHome(ros::Publisher& vel_pub, ros::Rate& rate, Ruckig<6>& otg, InputParam
         std_msgs::Float64MultiArray vel_msg;
         vel_msg.data.insert(vel_msg.data.end(), output.new_velocity.begin(), output.new_velocity.end());
         vel_pub.publish(vel_msg);
+
+        if (min_d_initial_opt) {
+            const double elapsed = (ros::Time::now() - t_start).toSec();
+            const double rem = std::max(0.0, *min_d_initial_opt - elapsed);
+            if (rem > 0.0) {
+                input.minimum_duration = rem;  // set optional with new value
+            } else {
+                input.minimum_duration.reset();  // unset optional when elapsed
+            }
+        }
+
         // Pass output to next input
         output.pass_to_input(input);
 
@@ -435,7 +461,7 @@ int main(int argc, char** argv) {
     }
 
     std::cout << "Trajectory duration: " << trajectory.get_duration() << std::endl;
-    ros::Duration break_time(5.0);
+    ros::Duration break_time(2.0);
     executeTrajectory(vel_pub, rate, otg, input, output,break_time);
 
     stopExecution(vel_pub, rate, otg, input, output);
@@ -465,6 +491,7 @@ int main(int argc, char** argv) {
             input.target_position = input_buffer.target_position;
             input.target_velocity = input_buffer.target_velocity;   
             input.target_acceleration = input_buffer.target_acceleration;
+            input.minimum_duration = input_buffer.minimum_duration;
             goal_ready = false;
         }
         for (size_t i = 0; i < 6; ++i) { 
